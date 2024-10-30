@@ -1,7 +1,4 @@
-#if UNITY_EDITOR
-
 using UnityEngine;
-using UnityEditor;
 
 namespace ISMR
 {
@@ -30,7 +27,7 @@ namespace ISMR
 
             // Undoの対応（TerrainData全体の変更を記録）
 #if UNITY_EDITOR
-            Undo.RegisterCompleteObjectUndo(terrainData, "Modify Terrain Height");
+            UnityEditor.Undo.RegisterCompleteObjectUndo(terrainData, "Modify Terrain Height");
 #endif
 
             // メートル単位の高さを正規化された値に変換
@@ -88,6 +85,7 @@ namespace ISMR
         }
 
         // Gizmosを使って影響範囲を視覚的に表示
+#if UNITY_EDITOR
         void OnDrawGizmos()
         {
             if (terrain != null)
@@ -110,7 +108,6 @@ namespace ISMR
                 }
             }
         }
+#endif
     }
 }
-
-#endif

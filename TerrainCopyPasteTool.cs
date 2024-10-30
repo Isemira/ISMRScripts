@@ -1,12 +1,8 @@
-#if UNITY_EDITOR
-
 using UnityEngine;
 using System.Collections.Generic;
-using UnityEditor;
 
 namespace ISMR
 {
-
     public class TerrainCopyPasteTool : MonoBehaviour
     {
         public enum CopyShape { Rectangle, Circle }  // 範囲の形状
@@ -33,7 +29,9 @@ namespace ISMR
             }
 
             // Undo操作の記録開始
-            Undo.RegisterCompleteObjectUndo(destinationTerrain.terrainData, "Copy Terrain Data");
+#if UNITY_EDITOR
+            UnityEditor.Undo.RegisterCompleteObjectUndo(destinationTerrain.terrainData, "Copy Terrain Data");
+#endif
 
             // 1. コピー元とコピー先の中心座標からグリッド座標を取得
             Vector2Int sourceCoords = LocalToTerrainCoordinates(sourceTerrain, sourceCenterLocalPosition);
@@ -200,6 +198,7 @@ namespace ISMR
         }
 
         // シーンビューに範囲を表示するGizmos描画
+#if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             if (sourceTerrain != null)
@@ -270,7 +269,6 @@ namespace ISMR
             // 円を描画
             Gizmos.DrawWireSphere(centerWorldPosition, radius);
         }
+#endif
     }
 }
-
-#endif
