@@ -1,23 +1,24 @@
-#if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
 
-[CustomEditor(typeof(TerrainModifierTool))]
-public class TerrainModifierToolEditor : Editor
+namespace ISMR
 {
-    public override void OnInspectorGUI()
+    [CustomEditor(typeof(TerrainModifierTool))]
+    public class TerrainModifierToolEditor : Editor
     {
-        // デフォルトのインスペクターを描画
-        DrawDefaultInspector();
-
-        // TerrainModifierToolスクリプトのターゲット
-        TerrainModifierTool script = (TerrainModifierTool)target;
-
-        // ボタンを表示し、クリックされたらメソッドを実行
-        if (GUILayout.Button("Modify Terrain Height"))
+        public override void OnInspectorGUI()
         {
-            script.ModifyHeight();
+            // デフォルトのインスペクターを描画
+            DrawDefaultInspector();
+
+            // TerrainModifierToolスクリプトのターゲット
+            TerrainModifierTool script = (TerrainModifierTool)target;
+
+            // ボタンを表示し、クリックされたらメソッドを実行
+            if (GUILayout.Button("Modify Terrain Height"))
+            {
+                script.ModifyHeight();
+            }
         }
     }
 }
-#endif
