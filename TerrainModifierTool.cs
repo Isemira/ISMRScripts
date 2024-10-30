@@ -12,7 +12,12 @@ namespace ISMR
         public Color gizmoColor = Color.red;  // ギズモの色（デフォルト赤）
 
         public enum Shape { Circle, Rectangle }
+        public enum GradientDirection { None, XPositive, XNegative, YPositive, YNegative }  // グラデーションの方向を設定
+        public enum GradientType { Linear, Quadratic, SquareRoot } // グラデーションのパターン
+
         public Shape selectedShape = Shape.Circle;  // 円形か矩形かを選択
+        public GradientDirection gradientDirection = GradientDirection.None;  // グラデーションの方向
+        public GradientType gradientType = GradientType.Linear;  // グラデーションのパターン
 
         private TerrainData terrainData;
         private int terrainWidth;
@@ -20,32 +25,23 @@ namespace ISMR
 
         public void ModifyHeight()
         {
-            // TerrainDataを取得して高さマップのサイズを確認
             terrainData = terrain.terrainData;
             terrainWidth = terrainData.heightmapResolution;
             terrainHeight = terrainData.heightmapResolution;
 
-            // Undoの対応（TerrainData全体の変更を記録）
 #if UNITY_EDITOR
             UnityEditor.Undo.RegisterCompleteObjectUndo(terrainData, "Modify Terrain Height");
 #endif
 
-            // メートル単位の高さを正規化された値に変換
             float heightDelta = heightDeltaMeters / terrainData.size.y;
-
-            // Terrainの全高マップを取得
             float[,] heights = terrainData.GetHeights(0, 0, terrainWidth, terrainHeight);
 
-            // Terrainのポジション（ワールド座標）
             Vector3 terrainPos = terrain.transform.position;
-
-            // 中心座標をローカル座標に変換
             int centerX = Mathf.RoundToInt((center.x - terrainPos.x) / terrainData.size.x * terrainWidth);
             int centerZ = Mathf.RoundToInt((center.y - terrainPos.z) / terrainData.size.z * terrainHeight);
 
             if (selectedShape == Shape.Circle)
             {
-                // 円形範囲内の地形の高さを相対的に変更
                 int range = Mathf.RoundToInt(radius / terrainData.size.x * terrainWidth);
                 for (int x = centerX - range; x <= centerX + range; x++)
                 {
@@ -56,7 +52,8 @@ namespace ISMR
                             float distance = Vector2.Distance(new Vector2(centerX, centerZ), new Vector2(x, z));
                             if (distance < range)
                             {
-                                heights[z, x] += heightDelta;  // 高さを変更
+                                float gradientFactor = CalculateGradientFactor(x, z, centerX, centerZ, range);
+                                heights[z, x] += heightDelta * gradientFactor;
                             }
                         }
                     }
@@ -64,7 +61,6 @@ namespace ISMR
             }
             else if (selectedShape == Shape.Rectangle)
             {
-                // 矩形範囲内の地形の高さを相対的に変更
                 int rectWidth = Mathf.RoundToInt(rectSize.x / terrainData.size.x * terrainWidth);
                 int rectHeight = Mathf.RoundToInt(rectSize.y / terrainData.size.z * terrainHeight);
 
@@ -74,17 +70,56 @@ namespace ISMR
                     {
                         if (x >= 0 && x < terrainWidth && z >= 0 && z < terrainHeight)
                         {
-                            heights[z, x] += heightDelta;  // 高さを変更
+                            float gradientFactor = CalculateGradientFactor(x, z, centerX, centerZ, Mathf.Max(rectWidth, rectHeight) / 2);
+                            heights[z, x] += heightDelta * gradientFactor;
                         }
                     }
                 }
             }
 
-            // 変更した高さをTerrainに反映
             terrainData.SetHeights(0, 0, heights);
         }
 
-        // Gizmosを使って影響範囲を視覚的に表示
+        private float CalculateGradientFactor(int x, int z, int centerX, int centerZ, int range)
+        {
+            float gradientFactor = 1.0f;
+
+            switch (gradientDirection)
+            {
+                case GradientDirection.XPositive:
+                    gradientFactor = Mathf.InverseLerp(centerX - range, centerX + range, x);
+                    break;
+                case GradientDirection.XNegative:
+                    gradientFactor = Mathf.InverseLerp(centerX + range, centerX - range, x);
+                    break;
+                case GradientDirection.YPositive:
+                    gradientFactor = Mathf.InverseLerp(centerZ - range, centerZ + range, z);
+                    break;
+                case GradientDirection.YNegative:
+                    gradientFactor = Mathf.InverseLerp(centerZ + range, centerZ - range, z);
+                    break;
+                default:
+                    gradientFactor = 1.0f;
+                    break;
+            }
+
+            // グラデーションパターンに応じて非線形変換
+            switch (gradientType)
+            {
+                case GradientType.Quadratic:
+                    gradientFactor = Mathf.Pow(gradientFactor, 2);  // 二次変換
+                    break;
+                case GradientType.SquareRoot:
+                    gradientFactor = Mathf.Sqrt(gradientFactor);  // 平方根変換
+                    break;
+                case GradientType.Linear:
+                default:
+                    break;
+            }
+
+            return gradientFactor;
+        }
+
 #if UNITY_EDITOR
         void OnDrawGizmos()
         {
@@ -92,18 +127,14 @@ namespace ISMR
             {
                 Gizmos.color = gizmoColor;
                 Vector3 terrainPos = terrain.transform.position;
-
-                // 中心のワールド座標を取得
                 Vector3 centerWorldPos = new Vector3(center.x + terrainPos.x, terrain.SampleHeight(new Vector3(center.x, 0, center.y)) + terrainPos.y, center.y + terrainPos.z);
 
                 if (selectedShape == Shape.Circle)
                 {
-                    // 円形の範囲を描画
                     Gizmos.DrawWireSphere(centerWorldPos, radius);
                 }
                 else if (selectedShape == Shape.Rectangle)
                 {
-                    // 矩形の範囲を描画
                     Gizmos.DrawWireCube(centerWorldPos, new Vector3(rectSize.x, 1, rectSize.y));
                 }
             }
